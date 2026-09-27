@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ダイヤモンドゲーム</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap');
+
+  :root{
+    --paper:#FFF4DC;
+    --paper-card:#FFFFFF;
+    --ink:#1E1B2E;
+    --ink-soft:#6B6680;
+    --rule:rgba(30,27,46,0.14);
+    --accent:#0050FF;
+    --accent-ink:#FFFFFF;
+    --shadow:rgba(30,27,46,0.25);
+    --hole:#D6CFC0;
+    --hole-line:rgba(30,27,46,0.20);
+    --red:#FF0000;
+    --yellow:#FFE600;
+    --green:#00B000;
+    --highlight:#0050FF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#15131F;
+      --paper-card:#221F33;
+      --ink:#F4F1FF;
+      --ink-soft:#A6A1BD;
+      --rule:rgba(244,241,255,0.16);
+      --accent:#5C8CFF;
+      --accent-ink:#0E0C18;
+      --shadow:rgba(0,0,0,0.5);
+      --hole:#3B3752;
+      --hole-line:rgba(244,241,255,0.16);
+      --red:#FF1A1A;
+      --yellow:#FFE600;
+      --green:#00D000;
+      --highlight:#5C8CFF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#15131F;
+    --paper-card:#221F33;
+    --ink:#F4F1FF;
+    --ink-soft:#A6A1BD;
+    --rule:rgba(244,241,255,0.16);
+    --accent:#5C8CFF;
+    --accent-ink:#0E0C18;
+    --shadow:rgba(0,0,0,0.5);
+    --hole:#3B3752;
+    --hole-line:rgba(244,241,255,0.16);
+    --red:#FF1A1A;
+    --yellow:#FFE600;
+    --green:#00D000;
+    --highlight:#5C8CFF;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN',sans-serif;
+  }
+
+  .page{
+    max-width:720px;
+    margin:0 auto;
+    padding:48px 18px 60px;
+  }
+
+  h1{
+    margin:0 0 4px;
+    font-family:'Shippori Mincho',serif;
+    font-weight:800;
+    font-size:clamp(26px,6vw,34px);
+    text-align:center;
+    letter-spacing:0.04em;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    margin:0 0 28px;
+    letter-spacing:0.03em;
+  }
+
+  .card{
+    background:var(--paper-card);
+    border-radius:16px;
+    box-shadow:0 10px 26px -18px var(--shadow);
+    padding:18px 18px;
+    margin-bottom:16px;
+  }
+
+  .players{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .player-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 14px;
+    border-radius:999px;
+    background:var(--paper);
+    border:1px solid var(--rule);
+    font-size:13px;
+    font-weight:700;
+    transition:box-shadow .2s, transform .2s;
+  }
+  .player-chip.active{
+    box-shadow:0 0 0 2px var(--highlight);
+    transform:translateY(-1px);
+  }
+  .player-chip .dot{
+    width:12px;height:12px;border-radius:50%;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,0.15);
+  }
+  .player-chip.finished{opacity:0.55;}
+  .dot.red{background:var(--red);}
+  .dot.yellow{background:var(--yellow);}
+  .dot.green{background:var(--green);}
+  .rank-badge{
+    font-size:11px;
+    background:var(--accent);
+    color:var(--accent-ink);
+    border-radius:999px;
+    padding:1px 7px;
+    font-weight:900;
+  }
+
+  #status{
+    text-align:center;
+    font-size:15px;
+    font-weight:700;
+    min-height:22px;
+    margin-bottom:10px;
+  }
+  #status .small{
+    display:block;
+    font-weight:400;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+
+  .board-wrap{
+    display:flex;
+    justify-content:center;
+  }
+  svg#board{
+    width:100%;
+    max-width:640px;
+    height:auto;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .hole{ fill:var(--hole); }
+  .board-line{ stroke:var(--hole-line); stroke-width:2; }
+  .zone-fill-hex{ fill:var(--ink); opacity:0.055; stroke:var(--ink); stroke-opacity:0.3; stroke-width:1.5; }
+  .zone-fill{ opacity:0.7; stroke-width:1.5; stroke-opacity:0.55; }
+  .zone-fill.red{ fill:var(--red); stroke:var(--red); }
+  .zone-fill.yellow{ fill:var(--yellow); stroke:var(--yellow); }
+  .zone-fill.green{ fill:var(--green); stroke:var(--green); }
+  .piece{ cursor:pointer; stroke:var(--ink); stroke-width:1.8; }
+  .piece.disabled{ cursor:default; }
+  .piece-ring{ fill:none; stroke-width:2.4; }
+  .dest{ cursor:pointer; }
+  .dest circle{ fill:var(--highlight); opacity:0.55; }
+  .dest:hover circle{ opacity:0.85; }
+  .selected-ring{ fill:none; stroke:var(--highlight); stroke-width:3; }
+
+  .controls{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:700;
+    border:none;
+    border-radius:999px;
+    padding:9px 20px;
+    cursor:pointer;
+    background:var(--accent);
+    color:var(--accent-ink);
+    transition:opacity .15s, transform .15s;
+  }
+  button:hover{ opacity:0.88; }
+  button:active{ transform:scale(0.97); }
+  button.ghost{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--rule);
+  }
+  button:disabled{ opacity:0.35; cursor:default; }
+
+  details{
+    font-size:13px;
+    line-height:1.9;
+    color:var(--ink-soft);
+  }
+  details summary{
+    cursor:pointer;
+    font-weight:700;
+    color:var(--ink);
+    margin-bottom:8px;
+  }
+  details ol,details ul{ margin:6px 0; padding-left:20px; }
+  details b{ color:var(--ink); }
+
+  .toast{
+    text-align:center;
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent);
+    min-height:20px;
+  }
+
+  /* colour palettes -- chosen in the 設定 card, applied on top of either theme */
+  :root[data-palette="primary"]{ --red:#FF0000; --yellow:#FFE600; --green:#00B000; --accent:#0050FF; --highlight:#0050FF; }
+  :root[data-palette="pop"]{ --red:#FF3355; --yellow:#FFC20E; --green:#16C96A; --accent:#2F6BFF; --highlight:#2F6BFF; }
+  :root[data-palette="neon"]{ --red:#FF1F6B; --yellow:#E6FF00; --green:#00F0A0; --accent:#9D4DFF; --highlight:#9D4DFF; }
+  :root[data-palette="candy"]{ --red:#FF7A8A; --yellow:#FFD84D; --green:#6FD99A; --accent:#5AA9FF; --highlight:#5AA9FF; }
+  :root[data-palette="retro"]{ --red:#D1342F; --yellow:#F2A900; --green:#2E7D4F; --accent:#1F4E79; --highlight:#1F4E79; }
+
+  .setting-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0 10px; }
+  .setting-label{ font-size:13px; font-weight:900; min-width:2.5em; }
+  .opt{
+    font-size:12px; padding:7px 12px; background:transparent; color:var(--ink);
+    border:1px solid var(--rule); display:inline-flex; align-items:center; gap:6px;
+  }
+  .opt.on{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .swatch{ display:inline-flex; gap:2px; }
+  .swatch i{ width:10px; height:10px; border-radius:50%; display:block; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25); }
+
+  @media (max-width:420px){
+    .page{ padding:20px 8px 40px; }
+    .subtitle{ margin-bottom:14px; }
+    .card{ padding:14px 6px; border-radius:12px; }
+    .card:has(details){ padding:14px 14px; }
+    .player-chip{ font-size:12px; padding:7px 11px; }
+    button{ padding:12px 22px; font-size:14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>ダイヤモンドゲーム</h1>
+  <p class="subtitle">あなた（赤）× CPU（黄・緑）</p>
+
+  <div class="card">
+    <div class="players" id="players"></div>
+    <div id="status">駒を配置しています…</div>
+    <div class="toast" id="toast"></div>
+
+    <div class="board-wrap">
+      <svg id="board" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        <g id="zonesLayer"></g>
+        <g id="linesLayer"></g>
+        <g id="holesLayer"></g>
+        <g id="highlightLayer"></g>
+        <g id="piecesLayer"></g>
+      </svg>
+    </div>
+
+    <div class="controls">
+      <button id="passBtn" class="ghost" disabled>パス</button>
+      <button id="restartBtn" class="ghost">はじめから</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="setting-row"><span class="setting-label">色</span><span id="paletteOpts" style="display:contents"></span></div>
+    <div class="setting-row" style="margin-bottom:0"><span class="setting-label">音</span><span id="soundOpts" style="display:contents"></span></div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>遊び方</summary>
+      <p><b>目的</b>：自分の陣地の駒すべてを、向かい側にある同じ色の陣地へ先に移動させること。ただし王様駒（◎）は必ず向かい側の陣地の頂点（◎マス）に移動させなければならない。</p>
+      <p><b>手順</b></p>
+      <ol>
+        <li>順番に1つの駒を動かす。隣り合う黒点への1マス移動、または駒を飛び越える「ジャンプ」ができる。</li>
+        <li>ジャンプは、隣接する黒点に駒（何色でも可）が1つあり、その先の黒点が空いているとき、飛び越して進める。着地後、続けて別方向へジャンプを繰り返すこともできる（1回の移動で好きなところで止まってよい）。ただし王様駒は飛び越えられない。</li>
+        <li>王様駒だけは、一直線上に並んだ駒をまとめて飛び越え、その先の空いている黒点まで進める。</li>
+        <li>他の色の陣地には入れないが、中央の共有エリアと、まだ誰も入っていない陣地（自分の目指す陣地を含む）は通行・着地ができる。</li>
+        <li>陣地の頂点（◎マス）には王様駒しか置けない。</li>
+      </ol>
+      <p>すべての駒（14個の通常駒＋王様駒）を向かいの陣地に移動させた順に、1位・2位・3位が決まります。</p>
+    </details>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- geometry: build the 3-colour "diamond" star board ---------- */
+  const N = 4;            // hexagon radius (each edge has N+1 = 5 points)
+  const D = 4;             // arm's own depth; the arm's 15-point territory
+                            // is these D*(D+1)/2=10 cells plus the 5-cell
+                            // hexagon edge it borders (shared with the
+                            // hexagon and, at its 2 corners, the neighbouring
+                            // arms) -- giving 14 pieces + 1 king per arm
+  const DIRS = [[1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]];
+
+  function rot(p){ return [-p[1], -p[2], -p[0]]; }
+  function rotN(p, n){ let r = p; for(let i=0;i<n;i++) r = rot(r); return r; }
+  function key(x,y,z){ return x+","+y+","+z; }
+
+  const cellMap = new Map(); // key -> cell
+  const cells = [];
+
+  function addCell(x,y,z, zone){
+    const k = key(x,y,z);
+    if(cellMap.has(k)) return cellMap.get(k);
+    const c = {x,y,z,id:k, zone, isApex:false};
+    cellMap.set(k,c);
+    cells.push(c);
+    return c;
+  }
+
+  // center hexagon
+  for(let x=-N;x<=N;x++){
+    for(let y=-N;y<=N;y++){
+      const z=-x-y;
+      if(Math.abs(z)<=N){ addCell(x,y,z,'hex'); }
+    }
+  }
+
+  // base arm: a self-contained triangle anchored at its own apex and
+  // spread out via two hex directions (dirs[4] deepens away from the
+  // apex, dirs[0] widens each row) -- this doesn't assume D<=N, so the
+  // arm depth and the hexagon's size can now be set independently.
+  const baseApex = [N, D, -(N+D)];
+  const baseArm = []; // {p:[x,y,z], a, b}
+  for(let a=0; a<D; a++){
+    for(let b=0; b<=a; b++){
+      baseArm.push({
+        p: [
+          baseApex[0] + a*DIRS[4][0] + b*DIRS[0][0],
+          baseApex[1] + a*DIRS[4][1] + b*DIRS[0][1],
+          baseApex[2] + a*DIRS[4][2] + b*DIRS[0][2]
+        ],
+        a, b
+      });
+    }
+  }
+
+  for(let arm=0; arm<6; arm++){
+    for(const {p} of baseArm){
+      const rp = rotN(p, arm);
+      addCell(rp[0], rp[1], rp[2], 'arm'+arm);
+    }
+    const ap = rotN(baseApex, arm);
+    cellMap.get(key(ap[0],ap[1],ap[2])).isApex = true;
+  }
+
+  const COLORS = ['red','yellow','green'];
+  // arm0 sits at the top of the board (z=-10 projects to negative py) and
+  // arm3 is its exact opposite at the bottom (z=+10), so homes are offset
+  // +3 from the original assignment to put the human player's start at the
+  // bottom of the screen while keeping all three players 120° apart.
+  const homeOf   = {red:3, yellow:5, green:1};
+  const targetOf = {red:0, yellow:2, green:4};
+  const armOwner = {3:'red', 5:'yellow', 1:'green'};
+
+  // every arm is either someone's home or someone's goal, never both --
+  // used to colour each of the 6 star points on the board
+  const armColorOf = {};
+  for(let i=0;i<6;i++){
+    armColorOf[i] = armOwner[i] || COLORS.find(c=>targetOf[c]===i);
+  }
+
+  const cellsByArm = {};
+  for(let i=0;i<6;i++) cellsByArm[i] = cells.filter(c=>c.zone==='arm'+i);
+
+  const apexOf = {};
+  for(let i=0;i<6;i++) apexOf[i] = cellsByArm[i].find(c=>c.isApex);
+
+  // the hexagon's own boundary edge nearest each arm -- shared, legal to
+  // pass through or land on for any colour, but not part of anyone's home
+  const baseHexEdge = [];
+  for(let x=0; x<=N; x++){ baseHexEdge.push(cellMap.get(key(x, N-x, -N))); }
+  const hexEdgeOf = {};
+  for(let i=0;i<6;i++){
+    hexEdgeOf[i] = baseHexEdge.map(c=>{
+      const rp = rotN([c.x,c.y,c.z], i);
+      return cellMap.get(key(rp[0],rp[1],rp[2]));
+    });
+  }
+  // a colour's home/goal territory for placement, settling and distance
+  // purposes is its own 10-cell arm plus the 5-cell hexagon edge it
+  // borders -- 15 points (14 pieces + king) total. The hex edge's own 2
+  // corner cells are shared with the two neighbouring arms' edges (hex
+  // edges meet at hexagon corners); a home arm's neighbours are always
+  // empty target arms at setup (home/target alternate all the way
+  // around), so there's no placement conflict.
+  const territoryOf = {};
+  for(let i=0;i<6;i++) territoryOf[i] = cellsByArm[i].concat(hexEdgeOf[i]);
+  const territoryIdsOf = {};
+  for(let i=0;i<6;i++) territoryIdsOf[i] = new Set(territoryOf[i].map(c=>c.id));
+
+  function cubeDist(a,b){
+    return (Math.abs(a.x-b.x)+Math.abs(a.y-b.y)+Math.abs(a.z-b.z))/2;
+  }
+
+  /* ---------- pixel layout ---------- */
+  const SIZE = 15;
+  function toPx(c){
+    return {
+      px: SIZE*Math.sqrt(3)*(c.x + c.z/2),
+      py: SIZE*1.5*c.z
+    };
+  }
+  for(const c of cells){ const p = toPx(c); c.px=p.px; c.py=p.py; }
+
+  // the hexagon's 6 corner cells, in order -- each is simply the shared
+  // corner of two adjacent arms' hex edges, so no separate geometry is
+  // needed to line the hexagon's background fill up with the arms'
+  // colour fills any more; they share the exact same points.
+  const hexCorners = [];
+  for(let i=0;i<6;i++) hexCorners.push(hexEdgeOf[i][0]);
+
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const c of cells){
+    minX=Math.min(minX,c.px); maxX=Math.max(maxX,c.px);
+    minY=Math.min(minY,c.py); maxY=Math.max(maxY,c.py);
+  }
+  const PAD = SIZE*1.8;
+  const vbX = minX-PAD, vbY = minY-PAD, vbW = (maxX-minX)+PAD*2, vbH = (maxY-minY)+PAD*2;
+  document.getElementById('board').setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+
+  /* ---------- game state ---------- */
+  let pieces = [];       // {id,color,isKing,cellId}
+  let occupancy = new Map(); // cellId -> piece
+  let finished = [];
+  let turnOrder = ['red','yellow','green'];
+  let currentIdx = 0;
+  let selectedPieceId = null;
+  let reachable = new Map(); // destId -> path
+  let gameOver = false;
+  let animating = false;
+  let hopOverride = null; // {pieceId, px, py, scale} while a hop is mid-flight
+  let humanColor = 'red';
+  let stuckCounter = {red:0, yellow:0, green:0};
+  let lastRemaining = {red:Infinity, yellow:Infinity, green:Infinity};
+  let lastMovedPiece = {red:null, yellow:null, green:null};
+
+  function neighborInDir(cell, dir){
+    return cellMap.get(key(cell.x+dir[0], cell.y+dir[1], cell.z+dir[2]));
+  }
+
+  function legalLanding(color, cell, isKing){
+    if(cell.isApex && !isKing) return false;
+    // the shared hexagon, including the border cells that double as part
+    // of each arm's 15-point territory, is open to every colour to both
+    // cross and stop on -- only the actual arm triangles are restricted
+    if(cell.zone==='hex') return true;
+    const armIdx = parseInt(cell.zone.slice(3),10);
+    if(armOwner[armIdx]===color) return true; // own home
+    if(targetOf[color]===armIdx) return true; // own goal
+    return false; // any other colour's home or goal -- off limits
+  }
+
+  // static graph distance (BFS over the legal movement graph, ignoring
+  // current piece occupancy) from every cell to a colour's target region.
+  // Straight-line cube distance can't see the board's actual connectivity
+  // -- a piece boxed in a home arm's corner may need to move *away* from
+  // the target in cube-distance terms just to reach the one exit path,
+  // and a pure distance heuristic never recognises that as progress. This
+  // is computed once at setup since it only depends on board topology and
+  // zone ownership, never on where pieces currently are.
+  function computeGraphDist(color, seedCells, forKing){
+    const dist = new Map();
+    const queue = [];
+    for(const c of seedCells){ dist.set(c.id, 0); queue.push(c); }
+    let qi = 0;
+    while(qi < queue.length){
+      const cur = queue[qi++];
+      for(const d of DIRS){
+        const nb = cellMap.get(key(cur.x+d[0], cur.y+d[1], cur.z+d[2]));
+        if(!nb || !legalLanding(color, nb, forKing) || dist.has(nb.id)) continue;
+        dist.set(nb.id, dist.get(cur.id)+1);
+        queue.push(nb);
+      }
+    }
+    return dist;
+  }
+  const graphDistToTarget = {};
+  const graphDistToApex = {};
+  for(const color of COLORS){
+    const targetArm = targetOf[color];
+    graphDistToTarget[color] = computeGraphDist(color, territoryOf[targetArm].filter(c=>!c.isApex), false);
+    graphDistToApex[color] = computeGraphDist(color, [apexOf[targetArm]], true);
+  }
+
+  // returns Map<destId, path> where path is the ordered list of cell ids
+  // hopped through to reach destId (not including the starting cell, but
+  // including every intermediate landing spot of a jump chain, ending
+  // with destId itself) -- the path is kept so a move can be animated
+  // hop by hop instead of the piece just teleporting to its destination.
+  function getReachable(fromCell, color, isKing, visited){
+    visited = visited || new Set([fromCell.id]);
+    const results = new Map();
+
+    // single steps (only from the very start of a move, jumps handle chaining)
+    if(visited.size===1){
+      for(const dir of DIRS){
+        const nb = neighborInDir(fromCell, dir);
+        if(nb && !occupancy.get(nb.id) && legalLanding(color, nb, isKing)){
+          results.set(nb.id, [nb.id]);
+        }
+      }
+    }
+
+    // jumps
+    for(const dir of DIRS){
+      if(isKing){
+        let cur = fromCell;
+        let runLen = 0;
+        while(true){
+          const nb = neighborInDir(cur, dir);
+          if(!nb) break;
+          const occ = occupancy.get(nb.id);
+          if(occ){ runLen++; cur = nb; continue; }
+          if(runLen>0 && legalLanding(color, nb, true) && !visited.has(nb.id)){
+            results.set(nb.id, [nb.id]);
+            const nv = new Set(visited); nv.add(nb.id);
+            const further = getReachable(nb, color, true, nv);
+            further.forEach((path,id)=>results.set(id, [nb.id, ...path]));
+          }
+          break;
+        }
+      } else {
+        const mid = neighborInDir(fromCell, dir);
+        if(!mid) continue;
+        const midPiece = occupancy.get(mid.id);
+        if(!midPiece || midPiece.isKing) continue;
+        const land = neighborInDir(mid, dir);
+        if(!land) continue;
+        if(occupancy.get(land.id)) continue;
+        if(!legalLanding(color, land, false)) continue;
+        if(visited.has(land.id)) continue;
+        results.set(land.id, [land.id]);
+        const nv = new Set(visited); nv.add(land.id);
+        const further = getReachable(land, color, false, nv);
+        further.forEach((path,id)=>results.set(id, [land.id, ...path]));
+      }
+    }
+    return results;
+  }
+
+  /* ---------- setup ---------- */
+  let pieceSeq = 0;
+  function setupGame(){
+    pieces = [];
+    occupancy = new Map();
+    finished = [];
+    currentIdx = 0;
+    selectedPieceId = null;
+    reachable = new Map();
+    gameOver = false;
+    animating = false;
+    stuckCounter = {red:0, yellow:0, green:0};
+    lastRemaining = {red:Infinity, yellow:Infinity, green:Infinity};
+    lastMovedPiece = {red:null, yellow:null, green:null};
+
+    for(const color of COLORS){
+      const armIdx = homeOf[color];
+      for(const c of territoryOf[armIdx]){
+        const isKing = c.isApex;
+        const piece = {id:'p'+(pieceSeq++), color, isKing, cellId:c.id};
+        pieces.push(piece);
+        occupancy.set(c.id, piece);
+      }
+    }
+    setToast('');
+    renderStatics();
+    renderPlayers();
+    render();
+    updateStatus();
+  }
+
+  /* ---------- rendering ---------- */
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    const e = document.createElementNS(NS, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function renderStatics(){
+    const zonesLayer = document.getElementById('zonesLayer');
+    const linesLayer = document.getElementById('linesLayer');
+    const holesLayer = document.getElementById('holesLayer');
+    zonesLayer.innerHTML = '';
+    linesLayer.innerHTML = '';
+    holesLayer.innerHTML = '';
+
+    zonesLayer.appendChild(el('polygon', {
+      class:'zone-fill-hex',
+      points: hexCorners.map(c=>`${c.px},${c.py}`).join(' ')
+    }));
+
+    for(let i=0;i<6;i++){
+      const apex = apexOf[i];
+      const edge = hexEdgeOf[i];
+      const pts = [apex, edge[0], edge[edge.length-1]]
+        .map(c=>`${c.px},${c.py}`).join(' ');
+      zonesLayer.appendChild(el('polygon', {
+        class:'zone-fill '+armColorOf[i], points:pts
+      }));
+    }
+
+    const drawn = new Set();
+    for(const c of cells){
+      for(const dir of [DIRS[0],DIRS[1],DIRS[2]]){
+        const nb = neighborInDir(c, dir);
+        if(!nb) continue;
+        const eid = c.id+'|'+nb.id;
+        if(drawn.has(eid)) continue;
+        drawn.add(eid);
+        linesLayer.appendChild(el('line',{
+          class:'board-line', x1:c.px, y1:c.py, x2:nb.px, y2:nb.py
+        }));
+      }
+    }
+    for(const c of cells){
+      const r = c.isApex ? SIZE*0.30 : SIZE*0.20;
+      holesLayer.appendChild(el('circle',{
+        class:'hole', cx:c.px, cy:c.py, r
+      }));
+    }
+  }
+
+  function renderPlayers(){
+    const wrap = document.getElementById('players');
+    wrap.innerHTML = '';
+    const labels = {red:'あなた（赤）', yellow:'CPU（黄）', green:'CPU（緑）'};
+    for(const color of COLORS){
+      const chip = document.createElement('div');
+      chip.className = 'player-chip' + (color===turnOrder[currentIdx] && !gameOver ? ' active':'') + (finished.includes(color) ? ' finished':'');
+      const dot = document.createElement('span');
+      dot.className = 'dot '+color;
+      chip.appendChild(dot);
+      const label = document.createElement('span');
+      label.textContent = labels[color];
+      chip.appendChild(label);
+      if(finished.includes(color)){
+        const badge = document.createElement('span');
+        badge.className = 'rank-badge';
+        badge.textContent = (finished.indexOf(color)+1)+'位';
+        chip.appendChild(badge);
+      }
+      chip.id = 'chip-'+color;
+      wrap.appendChild(chip);
+    }
+  }
+
+  function render(){
+    const piecesLayer = document.getElementById('piecesLayer');
+    const hlLayer = document.getElementById('highlightLayer');
+    piecesLayer.innerHTML = '';
+    hlLayer.innerHTML = '';
+
+    for(const piece of pieces){
+      let px, py, scale = 1;
+      if(hopOverride && hopOverride.pieceId===piece.id){
+        px = hopOverride.px; py = hopOverride.py; scale = hopOverride.scale;
+      } else {
+        const c = cellMap.get(piece.cellId);
+        px = c.px; py = c.py;
+      }
+      const attrs = {class:'piece'+((gameOver||piece.color!==humanColor||finished.includes(piece.color)||currentIdx!==turnOrder.indexOf(humanColor))?' disabled':''), 'data-piece':piece.id};
+      if(scale!==1) attrs.transform = `translate(${px} ${py}) scale(${scale}) translate(${-px} ${-py})`;
+      const g = el('g', attrs);
+      const r = SIZE*0.40;
+      const colorVar = 'var(--'+piece.color+')';
+      g.appendChild(el('circle',{cx:px, cy:py, r, fill:colorVar}));
+      if(piece.isKing){
+        g.appendChild(el('circle',{class:'piece-ring', cx:px, cy:py, r:r*0.55, stroke:'var(--paper-card)'}));
+      }
+      if(selectedPieceId===piece.id){
+        g.appendChild(el('circle',{class:'selected-ring', cx:px, cy:py, r:r+3}));
+      }
+      piecesLayer.appendChild(g);
+    }
+
+    if(selectedPieceId){
+      for(const destId of reachable.keys()){
+        const c = cellMap.get(destId);
+        const g = el('g', {class:'dest', 'data-dest':destId});
+        g.appendChild(el('circle',{cx:c.px, cy:c.py, r:SIZE*0.26}));
+        hlLayer.appendChild(g);
+      }
+    }
+    renderPlayers();
+  }
+
+  function setToast(msg){ document.getElementById('toast').textContent = msg || ''; }
+
+  function updateStatus(){
+    const statusEl = document.getElementById('status');
+    if(gameOver){
+      const labels = {red:'あなた（赤）', yellow:'CPU（黄）', green:'CPU（緑）'};
+      statusEl.innerHTML = 'ゲーム終了！<span class="small">'+finished.map((c,i)=>(i+1)+'位: '+labels[c]).join(' ／ ')+'</span>';
+      document.getElementById('passBtn').disabled = true;
+      return;
+    }
+    const color = turnOrder[currentIdx];
+    const labels = {red:'あなたの番です（赤）', yellow:'CPU（黄）の番です', green:'CPU（緑）の番です'};
+    statusEl.innerHTML = labels[color] + (color===humanColor ? '<span class="small">自分の駒をタップして選び、光っている場所をタップしてください</span>' : '<span class="small">考え中…</span>');
+    document.getElementById('passBtn').disabled = !(color===humanColor && !hasAnyMove(color));
+  }
+
+  function hasAnyMove(color){
+    const mine = pieces.filter(p=>p.color===color && !finished.includes(color));
+    for(const p of mine){
+      const from = cellMap.get(p.cellId);
+      const r = getReachable(from, color, p.isKing);
+      if(r.size>0) return true;
+    }
+    return false;
+  }
+
+  // walks a piece through each hop of its move one at a time, with each
+  // hop arcing up and back down like an actual hop (not a straight-line
+  // slide) so a long jump chain visibly bounces across the board instead
+  // of teleporting to its destination. occupancy/game-state stays
+  // untouched until the whole sequence finishes and onDone runs -- only
+  // the piece's rendered position moves during the animation itself.
+  /* ---------- sound: a soft wooden "pok" on each of the player's hops ---------- */
+  let audioCtx = null;
+  function load(k, d){ try{ return localStorage.getItem(k) || d; }catch(e){ return d; } }
+  function save(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+
+  const PALETTES = [
+    {id:'primary', name:'原色',     c:['#FF0000','#FFE600','#00B000']},
+    {id:'pop',     name:'ポップ',   c:['#FF3355','#FFC20E','#16C96A']},
+    {id:'neon',    name:'ネオン',   c:['#FF1F6B','#E6FF00','#00F0A0']},
+    {id:'candy',   name:'キャンディ', c:['#FF7A8A','#FFD84D','#6FD99A']},
+    {id:'retro',   name:'レトロ',   c:['#D1342F','#F2A900','#2E7D4F']}
+  ];
+  const SOUNDS = [
+    {id:'pok',    name:'ポッ'},
+    {id:'marimba',name:'コロン'},
+    {id:'pico',   name:'ピコ'},
+    {id:'drop',   name:'ポチャ'},
+    {id:'bell',   name:'チリン'},
+    {id:'off',    name:'なし'}
+  ];
+  let palette = load('dg-palette', 'retro');
+  let sound = load('dg-sound2', load('dg-sound','on')==='off' ? 'off' : 'drop');
+
+  function ensureAudio(){
+    if(sound==='off') return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==='suspended') audioCtx.resume();
+    }catch(e){ audioCtx = null; }
+  }
+  // one short voice: waveform, start->end pitch, peak volume, length
+  function tone(type, f0, f1, vol, len, at){
+    const t = audioCtx.currentTime + (at||0);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t);
+    if(f1!==f0) osc.frequency.exponentialRampToValueAtTime(f1, t+len*0.5);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(vol, t+0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t+len);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t+len+0.02);
+  }
+  function playHop(n){
+    if(sound==='off' || !audioCtx) return;
+    // each hop in a jump chain steps up a little, like a small scale
+    const step = Math.pow(2, Math.min(n,8)*2/12);
+    try{
+      switch(sound){
+        case 'pok':     tone('sine', 650*step, 520*step, 0.22, 0.16); break;
+        case 'marimba': tone('triangle', 784*step, 784*step, 0.28, 0.22);
+                        tone('sine', 784*4*step, 784*4*step, 0.05, 0.06); break;
+        case 'pico':    tone('square', 988*step, 988*step, 0.07, 0.07);
+                        tone('square', 1319*step, 1319*step, 0.07, 0.08, 0.05); break;
+        case 'drop':    tone('sine', 1400*step, 420*step, 0.22, 0.14); break;
+        case 'bell':    tone('sine', 1568*step, 1568*step, 0.16, 0.5);
+                        tone('sine', 1568*2.76*step, 1568*2.76*step, 0.04, 0.25); break;
+      }
+    }catch(e){}
+  }
+
+  function applyPalette(){ document.documentElement.setAttribute('data-palette', palette); }
+  function renderSettings(){
+    const po = document.getElementById('paletteOpts');
+    po.innerHTML = '';
+    for(const p of PALETTES){
+      const b = document.createElement('button');
+      b.className = 'opt' + (p.id===palette ? ' on' : '');
+      b.innerHTML = '<span class="swatch">'+p.c.map(c=>'<i style="background:'+c+'"></i>').join('')+'</span>'+p.name;
+      b.addEventListener('click', ()=>{ palette = p.id; save('dg-palette', palette); applyPalette(); renderSettings(); });
+      po.appendChild(b);
+    }
+    const so = document.getElementById('soundOpts');
+    so.innerHTML = '';
+    for(const s of SOUNDS){
+      const b = document.createElement('button');
+      b.className = 'opt' + (s.id===sound ? ' on' : '');
+      b.textContent = (s.id==='off' ? '🔕 ' : '') + s.name;
+      b.addEventListener('click', ()=>{
+        sound = s.id; save('dg-sound2', sound); renderSettings();
+        // tapping a sound plays a little 3-hop preview
+        if(sound!=='off'){ ensureAudio(); [0,1,2].forEach(i=>setTimeout(()=>playHop(i), i*170)); }
+      });
+      so.appendChild(b);
+    }
+  }
+  applyPalette();
+  renderSettings();
+
+  const HOP_MS = 420;
+  const HOP_ARC = SIZE * 0.85;
+  function easeInOutQuad(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function animateMove(piece, path, onDone){
+    animating = true;
+    const startCell = cellMap.get(piece.cellId);
+    let fromPx = startCell.px, fromPy = startCell.py;
+    let idx = 0;
+    (function nextHop(){
+      if(idx >= path.length){
+        hopOverride = null;
+        animating = false;
+        render();
+        onDone();
+        return;
+      }
+      const toCell = cellMap.get(path[idx]);
+      const toPx = toCell.px, toPy = toCell.py;
+      const t0 = performance.now();
+      (function frame(){
+        const t = Math.min(1, (performance.now()-t0)/HOP_MS);
+        const eased = easeInOutQuad(t);
+        const arc = Math.sin(t*Math.PI);
+        hopOverride = {
+          pieceId: piece.id,
+          px: fromPx + (toPx-fromPx)*eased,
+          py: fromPy + (toPy-fromPy)*eased - HOP_ARC*arc,
+          scale: 1 + 0.14*arc
+        };
+        render();
+        if(t < 1){
+          requestAnimationFrame(frame);
+        } else {
+          piece.cellId = path[idx];
+          if(piece.color===humanColor) playHop(idx);
+          fromPx = toPx; fromPy = toPy;
+          idx++;
+          nextHop();
+        }
+      })();
+    })();
+  }
+
+  /* ---------- interaction ---------- */
+  document.getElementById('board').addEventListener('click', function(e){
+    ensureAudio();
+    if(gameOver || animating) return;
+    const color = turnOrder[currentIdx];
+    if(color!==humanColor) return;
+
+    // resolve the tap to the nearest cell rather than whatever circle sits
+    // under the finger -- on a phone the pieces are only ~10px across, so
+    // requiring a direct hit makes it easy to miss or grab a neighbour.
+    const cell = nearestCell(e.clientX, e.clientY);
+    const occupant = cell && pieces.find(p=>p.cellId===cell.id);
+
+    if(cell && !occupant && reachable.has(cell.id) && selectedPieceId){
+      const piece = pieces.find(p=>p.id===selectedPieceId);
+      const path = reachable.get(cell.id);
+      selectedPieceId = null;
+      reachable = new Map();
+      doMove(piece, cell.id, path);
+      return;
+    }
+
+    if(occupant && occupant.color===humanColor && !finished.includes(humanColor)
+       && selectedPieceId!==occupant.id){
+      selectedPieceId = occupant.id;
+      reachable = getReachable(cell, occupant.color, occupant.isKing);
+      render();
+      return;
+    }
+
+    // anything else -- the selected piece again, an empty spot, a CPU
+    // piece, or outside the board -- just clears the selection
+    if(selectedPieceId){
+      selectedPieceId = null; reachable = new Map(); render();
+    }
+  });
+
+  // screen point -> the closest board cell, or null if the tap is further
+  // than about half the gap between neighbouring cells from any of them
+  function nearestCell(clientX, clientY){
+    const ctm = document.getElementById('board').getScreenCTM();
+    if(!ctm) return null;
+    const pt = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+    let best = null, bestD = SIZE*0.9;
+    for(const c of cells){
+      const d = Math.hypot(c.px-pt.x, c.py-pt.y);
+      if(d < bestD){ best = c; bestD = d; }
+    }
+    return best;
+  }
+
+  document.getElementById('passBtn').addEventListener('click', function(){
+    if(gameOver || animating) return;
+    const color = turnOrder[currentIdx];
+    if(color!==humanColor || hasAnyMove(color)) return;
+    selectedPieceId = null; reachable = new Map();
+    advanceTurn();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', setupGame);
+
+  function doMove(piece, destId, path){
+    const startCell = piece.cellId;
+    animateMove(piece, path, () => {
+      occupancy.delete(startCell);
+      occupancy.set(destId, piece);
+      checkWin(piece.color);
+      render();
+      if(gameOver){ updateStatus(); return; }
+      advanceTurn();
+    });
+  }
+
+  function checkWin(color){
+    if(finished.includes(color)) return;
+    const targetArm = targetOf[color];
+    const mine = pieces.filter(p=>p.color===color);
+    const king = mine.find(p=>p.isKing);
+    const apex = apexOf[targetArm];
+    if(king.cellId !== apex.id) return;
+    const normals = mine.filter(p=>!p.isKing);
+    const done = normals.every(p=>territoryIdsOf[targetArm].has(p.cellId) && p.cellId!==apex.id);
+    if(done){
+      finished.push(color);
+      const labels = {red:'あなた（赤）', yellow:'CPU（黄）', green:'CPU（緑）'};
+      setToast(labels[color]+'が'+finished.length+'位でゴール！');
+      if(finished.length>=3){ gameOver = true; }
+    }
+  }
+
+  function advanceTurn(){
+    if(gameOver){ updateStatus(); return; }
+    let guard = 0;
+    do{
+      currentIdx = (currentIdx+1)%3;
+      guard++;
+    } while(finished.includes(turnOrder[currentIdx]) && guard<10);
+    updateStatus();
+    render();
+    const color = turnOrder[currentIdx];
+    if(color!==humanColor && !gameOver){
+      // each move now visibly hops cell by cell (HOP_MS per hop), which
+      // already paces things out, so this is just a brief settle before
+      // the next piece starts moving rather than a flat per-turn delay
+      setTimeout(()=>aiTurn(color), 90);
+    }
+  }
+
+  // distance from a cell to the nearest still-empty cell in a target arm
+  // (spreads a color's pieces across their whole target zone instead of
+  // funnelling them all toward one centroid, which is what caused pieces
+  // to jam into each other and stall completely during testing)
+  function isSettled(piece){
+    const targetArm = targetOf[piece.color];
+    const apex = apexOf[targetArm];
+    if(piece.isKing) return piece.cellId === apex.id;
+    return territoryIdsOf[targetArm].has(piece.cellId) && piece.cellId!==apex.id;
+  }
+
+  function totalRemaining(color){
+    const targetArm = targetOf[color];
+    const distToApex = graphDistToApex[color];
+    const distToTarget = graphDistToTarget[color];
+    let s = 0;
+    for(const p of pieces){
+      if(p.color!==color) continue;
+      s += p.isKing ? distToApex.get(p.cellId) : distToTarget.get(p.cellId);
+    }
+    return s;
+  }
+
+  // scores one candidate (piece -> destId) move for a colour. Shared by
+  // the greedy search and the random escape-valve search below, so the
+  // escape valve can still avoid obviously-bad moves instead of picking
+  // with zero regard for progress.
+  // the shallowest apex-distance among a colour's still-empty target
+  // cells -- i.e. the deepest row that still has room. A static
+  // per-cell depth bonus turned out too weak to out-pull physical
+  // reachability (a piece arriving from the hex plane is almost always
+  // closer to a shallow entrance cell than a deep one, so it took the
+  // shallow cell regardless of a small scoring nudge), leaving the deep
+  // rows near the king to fill in only via later settled-piece reshuffles.
+  // Tracking the live frontier and rewarding landing exactly on it keeps
+  // the target that "next needed depth", shifting automatically once
+  // that row fills, which reliably drains the deep rows first.
+  function frontierDepthOf(color){
+    const targetArm = targetOf[color];
+    const distToApex = graphDistToApex[color];
+    let minEmpty = Infinity;
+    for(const c of territoryOf[targetArm]){
+      if(c.isApex || occupancy.has(c.id)) continue;
+      const d = distToApex.get(c.id);
+      if(d < minEmpty) minEmpty = d;
+    }
+    return minEmpty;
+  }
+
+  // graph distance to the nearest cell at exactly the frontier depth,
+  // rather than to any target cell -- used in place of graphDistToTarget
+  // so a piece's whole approach is aimed at the deep row currently being
+  // filled, not just its final in-target landing choice. Without this,
+  // en-route pieces beelined for whichever target cell was nearest (an
+  // entrance cell) and the +10 frontier bonus only ever got to break
+  // ties among the handful of cells already reachable that turn.
+  function computeDistToFrontier(color, frontierDepth){
+    if(frontierDepth===Infinity) return graphDistToTarget[color];
+    const targetArm = targetOf[color];
+    const distToApex = graphDistToApex[color];
+    const seeds = territoryOf[targetArm].filter(c=>!c.isApex && distToApex.get(c.id)===frontierDepth);
+    return computeGraphDist(color, seeds, false);
+  }
+
+  function scoreMove(color, piece, destId, targetArm, apex, distToApex, distToTarget, frontierDepth){
+    const from = cellMap.get(piece.cellId);
+    const dest = cellMap.get(destId);
+    const wasSettled = isSettled(piece);
+    const fromScore = piece.isKing ? distToApex.get(from.id) : distToTarget.get(from.id);
+    let score;
+    if(piece.isKing){
+      score = fromScore - distToApex.get(destId);
+      if(destId===apex.id) score += 60;
+    } else {
+      const inTarget = territoryIdsOf[targetArm].has(destId) && !dest.isApex;
+      const destScore = inTarget ? 0 : distToTarget.get(destId);
+      score = fromScore - destScore;
+      // only reward *newly* arriving in the target zone -- a piece
+      // that's already settled there scores 0-0=0 for shuffling to
+      // another target cell, which combined with the settled penalty
+      // below keeps it clearly behind any real progress elsewhere.
+      // Applying this bonus unconditionally meant an already-settled
+      // piece got +6 for free every single turn (since its fromScore
+      // is already 0), comfortably outscoring the genuine escape move
+      // of a piece still stuck, even after the settled penalty.
+      if(inTarget && !wasSettled) score += 6;
+      // among target cells, strongly prefer landing exactly on the
+      // current frontier depth (the deepest row that still has an empty
+      // cell) over any shallower cell -- see frontierDepthOf. Applies
+      // only to a piece newly arriving, same reasoning as the +6 above.
+      if(inTarget && !wasSettled){
+        const destDepth = distToApex.get(destId);
+        score += (destDepth===frontierDepth) ? 10 : -(destDepth-frontierDepth)*2;
+      }
+      // a settled piece sitting in a shallow row can also proactively
+      // migrate deeper to the current frontier cell, freeing its old
+      // slot for the next arrival -- without this, the flat -3 settled
+      // penalty below left reshuffling only ever happen through the
+      // stuck-counter escape valve, so shallow rows filled permanently
+      // on first arrival and never emptied back out on their own.
+      if(inTarget && wasSettled){
+        const fromDepth = distToApex.get(from.id);
+        const destDepth = distToApex.get(destId);
+        if(destDepth===frontierDepth && destDepth<fromDepth) score += 12;
+      }
+    }
+    if(lastMovedPiece[color]===piece.id) score -= 1.5;
+    // an already-settled piece scores ~0 for any in-place shuffle, the
+    // same as an unsettled piece merely repositioning within its own
+    // home to reach its one exit -- without a real gap between them,
+    // jitter let the AI waste turns nudging finished pieces while a
+    // piece boxed deep in a mostly-empty home arm never got picked at all
+    if(wasSettled) score -= 3;
+    return score;
+  }
+
+  function bestGreedyMove(color){
+    const mine = pieces.filter(p=>p.color===color && !finished.includes(color));
+    const targetArm = targetOf[color];
+    const apex = apexOf[targetArm];
+    const distToApex = graphDistToApex[color];
+    const frontierDepth = frontierDepthOf(color);
+    const distToFrontier = computeDistToFrontier(color, frontierDepth);
+    let best = null;
+    for(const piece of mine){
+      const from = cellMap.get(piece.cellId);
+      const reach = getReachable(from, color, piece.isKing);
+      // hard-forbid immediately undoing the piece's last move. A piece
+      // boxed into a 2-cell pocket where the only option IS the undo just
+      // contributes no candidate this turn (skipped in favour of another
+      // piece) rather than being allowed to ping-pong back and forth --
+      // a soft score penalty here wasn't enough to stop that from happening.
+      const dests = [...reach.keys()].filter(id=>id!==piece.prevCell);
+      for(const destId of dests){
+        let score = scoreMove(color, piece, destId, targetArm, apex, distToApex, distToFrontier, frontierDepth);
+        score += (Math.random()*0.8 - 0.4);
+        if(!best || score>best.score){ best = {piece, destId, score, path: reach.get(destId)}; }
+      }
+    }
+    return best;
+  }
+
+  // random move among the escape-valve's candidate pool, used to break
+  // out of gridlock the greedy search can't escape on its own (e.g. the
+  // king's approach to the apex only exists along one exact line, so a
+  // purely greedy distance heuristic can get becalmed nearby without
+  // ever finding it). Picking with zero regard for score meant this
+  // regularly picked moves that made things *worse* even when a clearly
+  // better option was sitting right there in the same candidate list, so
+  // it's restricted to the candidates within reach of the best score.
+  function randomMove(color, includeSettled){
+    let mine = pieces.filter(p=>p.color===color && !finished.includes(color) && !isSettled(p));
+    if(includeSettled || mine.length===0) mine = pieces.filter(p=>p.color===color && !finished.includes(color));
+    const targetArm = targetOf[color];
+    const apex = apexOf[targetArm];
+    const distToApex = graphDistToApex[color];
+    const frontierDepth = frontierDepthOf(color);
+    const distToFrontier = computeDistToFrontier(color, frontierDepth);
+    const all = [];
+    for(const piece of mine){
+      const from = cellMap.get(piece.cellId);
+      const reach = getReachable(from, color, piece.isKing);
+      const dests = [...reach.keys()].filter(id=>id!==piece.prevCell);
+      const dist = piece.isKing ? distToApex : distToFrontier;
+      const fromRaw = dist.get(from.id);
+      for(const destId of dests){
+        const score = scoreMove(color, piece, destId, targetArm, apex, distToApex, distToFrontier, frontierDepth);
+        // raw graph-distance change for this specific piece, independent
+        // of the composite score (settled/jitter/etc) -- used below to
+        // keep the escape valve from picking a move that plainly walks a
+        // piece backwards just because nothing scored much better
+        const progress = fromRaw - dist.get(destId);
+        all.push({piece, destId, score, progress, path: reach.get(destId)});
+      }
+    }
+    // if every unsettled piece's only option is undoing its last move, they
+    // just sit out this turn rather than being forced to ping-pong -- a
+    // piece can end up in a fully isolated 2-cell pocket, and letting it
+    // "wait" there is far better than visibly bouncing back and forth
+    if(all.length===0) return null;
+    // prefer moves that don't walk a piece further from its own goal --
+    // picking with zero regard for this meant the escape valve regularly
+    // sent an almost-finished piece backwards even while a plain forward
+    // step sat right there in the same candidate list. Only fall back to
+    // a regressing move when literally nothing else is available.
+    const nonRegressing = all.filter(c=>c.progress >= 0);
+    const pool = nonRegressing.length>0 ? nonRegressing : all;
+    const maxScore = Math.max(...pool.map(c=>c.score));
+    const good = pool.filter(c=>c.score >= maxScore-3);
+    return good[Math.floor(Math.random()*good.length)];
+  }
+
+  /* ---------- stronger CPU: 2-move lookahead ---------- */
+  // Each piece's cost is its graph distance to the target apex. Summing
+  // that over all 15 pieces is minimal exactly when the target triangle is
+  // filled deepest-first, so one number captures both "get there" and
+  // "pack in tightly". A small extra weight on the rearmost piece stops
+  // the CPU from abandoning a straggler that later has nothing to jump over.
+  const AI_W_MAX = 1;
+  const AI_W_KING = 1;
+  const AI_GAMMA = 1;
+  const AI_TOPK = 30;
+  function aiEval(color){
+    const d = graphDistToApex[color];
+    let sum = 0, max = 0;
+    for(const p of pieces){
+      if(p.color!==color) continue;
+      const v = d.get(p.cellId);
+      sum += p.isKing ? v*AI_W_KING : v;
+      if(!p.isKing && v>max) max = v;
+    }
+    return sum + AI_W_MAX*max;
+  }
+  function aiMoves(color, skipUndo){
+    const res = [];
+    for(const piece of pieces){
+      if(piece.color!==color) continue;
+      const reach = getReachable(cellMap.get(piece.cellId), color, piece.isKing);
+      reach.forEach((path,destId)=>{
+        if(skipUndo && destId===piece.prevCell) return;
+        res.push({piece, destId, path});
+      });
+    }
+    return res;
+  }
+  function aiApply(m){
+    const from = m.piece.cellId;
+    occupancy.delete(from); occupancy.set(m.destId, m.piece); m.piece.cellId = m.destId;
+    return from;
+  }
+  function aiUndo(m, from){
+    occupancy.delete(m.destId); occupancy.set(from, m.piece); m.piece.cellId = from;
+  }
+  // looks at every move this turn, and for the most promising ones also at
+  // the best follow-up next turn -- that's what lets it set up "ladders"
+  // (move one piece now so another can make a long jump chain next turn)
+  // instead of only grabbing whatever gains the most right now
+  function bestLookaheadMove(color){
+    const base = aiEval(color);
+    const first = aiMoves(color, true);
+    if(first.length===0) return null;
+    for(const m of first){
+      const from = aiApply(m);
+      m.e1 = aiEval(color);
+      aiUndo(m, from);
+    }
+    first.sort((a,b)=>a.e1-b.e1);
+    let best = null;
+    for(let i=0;i<first.length;i++){
+      const m = first[i];
+      let e2 = m.e1;
+      if(i < AI_TOPK){
+        const from = aiApply(m);
+        for(const m2 of aiMoves(color, false)){
+          if(m2.piece===m.piece && m2.destId===from) continue;
+          const f2 = aiApply(m2);
+          const e = aiEval(color);
+          if(e < e2) e2 = e;
+          aiUndo(m2, f2);
+        }
+        aiUndo(m, from);
+      }
+      const gain1 = base - m.e1;
+      const value = gain1 + AI_GAMMA*(m.e1 - e2) + gain1*0.05 + Math.random()*0.01;
+      if(!best || value > best.value) best = {piece:m.piece, destId:m.destId, path:m.path, value, gain1};
+    }
+    return best;
+  }
+
+  function aiTurn(color){
+    if(gameOver) return;
+    let mv = bestLookaheadMove(color);
+    // nothing makes progress even two moves out (rare late-game gridlock,
+    // usually another colour parked in the way) -- fall back to the old
+    // shuffle so the CPU still wriggles free instead of freezing
+    if(!mv || mv.value <= 0){
+      stuckCounter[color]++;
+      if(stuckCounter[color] >= 2) mv = randomMove(color, true) || mv;
+    } else {
+      stuckCounter[color] = 0;
+    }
+    if(mv){
+      doMoveAI(mv.piece, mv.destId, mv.path, color);
+    } else {
+      advanceTurn();
+    }
+  }
+
+  function doMoveAI(piece, destId, path, color){
+    const startCell = piece.cellId;
+    animateMove(piece, path, () => {
+      occupancy.delete(startCell);
+      occupancy.set(destId, piece);
+      piece.prevCell = startCell;
+      lastMovedPiece[color] = piece.id;
+      checkWin(color);
+
+      render();
+      if(gameOver){ updateStatus(); return; }
+      advanceTurn();
+    });
+  }
+
+  setupGame();
+})();
+</script>
+
+</body>
+</html>
