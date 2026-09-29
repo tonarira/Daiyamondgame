@@ -285,7 +285,8 @@
 
   <div class="card">
     <div class="setting-row"><span class="setting-label">色</span><span id="paletteOpts" style="display:contents"></span></div>
-    <div class="setting-row" style="margin-bottom:0"><span class="setting-label">音</span><span id="soundOpts" style="display:contents"></span></div>
+    <div class="setting-row"><span class="setting-label">音</span><span id="soundOpts" style="display:contents"></span></div>
+    <div class="setting-row" style="margin-bottom:0"><span class="setting-label">CPU</span><span id="levelOpts" style="display:contents"></span></div>
   </div>
 
   <div class="card">
@@ -296,7 +297,7 @@
       <ol>
         <li>順番に1つの駒を動かす。隣り合う黒点への1マス移動、または駒を飛び越える「ジャンプ」ができる。</li>
         <li>ジャンプは、隣接する黒点に駒（何色でも可）が1つあり、その先の黒点が空いているとき、飛び越して進める。着地後、続けて別方向へジャンプを繰り返すこともできる（1回の移動で好きなところで止まってよい）。ただし王様駒は飛び越えられない。</li>
-        <li>王様駒だけは、一直線上に並んだ駒をまとめて飛び越え、その先の空いている黒点まで進める。</li>
+        <li>王様駒だけは、一直線上に並んだ駒をまとめて飛び越え、その先の空いている黒点まで進める。ただし列の中に他の王様駒がいるときは飛び越えられない。</li>
         <li>他の色の陣地には入れないが、中央の共有エリアと、まだ誰も入っていない陣地（自分の目指す陣地を含む）は通行・着地ができる。</li>
         <li>陣地の頂点（◎マス）には王様駒しか置けない。</li>
       </ol>
@@ -537,6 +538,7 @@
           const nb = neighborInDir(cur, dir);
           if(!nb) break;
           const occ = occupancy.get(nb.id);
+          if(occ && occ.isKing) break; // kings can't be jumped -- not even by another king
           if(occ){ runLen++; cur = nb; continue; }
           if(runLen>0 && legalLanding(color, nb, true) && !visited.has(nb.id)){
             results.set(nb.id, [nb.id]);
@@ -764,7 +766,13 @@
     {id:'bell',   name:'チリン'},
     {id:'off',    name:'なし'}
   ];
+  const LEVELS = [
+    {id:'weak',   name:'よわい'},
+    {id:'normal', name:'ふつう'},
+    {id:'strong', name:'つよい'}
+  ];
   let palette = load('dg-palette', 'retro');
+  let cpuLevel = load('dg-level', 'strong');
   let sound = load('dg-sound2', load('dg-sound','on')==='off' ? 'off' : 'drop');
 
   function ensureAudio(){
@@ -829,6 +837,15 @@
         if(sound!=='off'){ ensureAudio(); [0,1,2].forEach(i=>setTimeout(()=>playHop(i), i*170)); }
       });
       so.appendChild(b);
+    }
+    const lo = document.getElementById('levelOpts');
+    lo.innerHTML = '';
+    for(const l of LEVELS){
+      const b = document.createElement('button');
+      b.className = 'opt' + (l.id===cpuLevel ? ' on' : '');
+      b.textContent = l.name;
+      b.addEventListener('click', ()=>{ cpuLevel = l.id; save('dg-level', cpuLevel); renderSettings(); });
+      lo.appendChild(b);
     }
   }
   applyPalette();
@@ -1135,7 +1152,7 @@
   // regularly picked moves that made things *worse* even when a clearly
   // better option was sitting right there in the same candidate list, so
   // it's restricted to the candidates within reach of the best score.
-  function randomMove(color, includeSettled){
+  function randomMove(color, includeSettled, loose){
     let mine = pieces.filter(p=>p.color===color && !finished.includes(color) && !isSettled(p));
     if(includeSettled || mine.length===0) mine = pieces.filter(p=>p.color===color && !finished.includes(color));
     const targetArm = targetOf[color];
@@ -1172,6 +1189,8 @@
     // a regressing move when literally nothing else is available.
     const nonRegressing = all.filter(c=>c.progress >= 0);
     const pool = nonRegressing.length>0 ? nonRegressing : all;
+    // "weak" CPU: any move that doesn't go backwards, however poor
+    if(loose) return pool[Math.floor(Math.random()*pool.length)];
     const maxScore = Math.max(...pool.map(c=>c.score));
     const good = pool.filter(c=>c.score >= maxScore-3);
     return good[Math.floor(Math.random()*good.length)];
@@ -1254,8 +1273,30 @@
     return best;
   }
 
+  // "normal"/"weak" CPU: one-move greedy search (weak also plays a random
+  // non-backward move about half the time), with the same stuck-detection
+  // escape valve the greedy CPU always needed to avoid late-game gridlock
+  function simpleAiTurn(color){
+    const unsettledCount = pieces.filter(p=>p.color===color && !isSettled(p)).length;
+    const forceRandom = stuckCounter[color] >= 3 || unsettledCount <= 1;
+    const stuckThreshold = unsettledCount <= 2 ? 1 : 10;
+    const deeplyStuck = stuckCounter[color] >= stuckThreshold;
+    let mv;
+    if(forceRandom) mv = randomMove(color, deeplyStuck);
+    else if(cpuLevel==='weak' && Math.random() < 0.5) mv = randomMove(color, false, true);
+    else mv = bestGreedyMove(color);
+
+    const rem = totalRemaining(color);
+    if(rem >= lastRemaining[color]-0.5) stuckCounter[color]++; else stuckCounter[color] = 0;
+    lastRemaining[color] = rem;
+
+    if(mv) doMoveAI(mv.piece, mv.destId, mv.path, color);
+    else advanceTurn();
+  }
+
   function aiTurn(color){
     if(gameOver) return;
+    if(cpuLevel!=='strong'){ simpleAiTurn(color); return; }
     let mv = bestLookaheadMove(color);
     // nothing makes progress even two moves out (rare late-game gridlock,
     // usually another colour parked in the way) -- fall back to the old
